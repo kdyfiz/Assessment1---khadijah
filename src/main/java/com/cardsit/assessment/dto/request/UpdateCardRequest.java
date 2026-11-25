@@ -4,6 +4,12 @@ import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 
+/**
+ * Request body for {@code PUT /api/v1/cards/{id}}.
+ *
+ * <p>All fields are optional — {@code CardService} only updates non-null values.
+ * Card number / card type are not included (immutable after create in this design).
+ */
 public class UpdateCardRequest {
 
     @Size(max = 100)

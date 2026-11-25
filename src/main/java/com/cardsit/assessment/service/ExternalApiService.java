@@ -16,8 +16,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Demonstrates nested API calling:
- * Client → Our API → 3rd-party API (JSONPlaceholder)
+ * Handles nested outbound HTTP calls to a 3rd-party API.
+ *
+ * <p><b>Assessment requirement:</b> demonstrate Client → Our API → External API.
+ * Uses JSONPlaceholder ({@code https://jsonplaceholder.typicode.com}) as a free stub.
+ *
+ * <p>Base URL is configurable via {@code external.api.base-url} in {@code application.yml}.
+ * HTTP client timeouts are set in {@code RestTemplateConfig}.
  */
 @Service
 public class ExternalApiService {
@@ -27,6 +32,7 @@ public class ExternalApiService {
     private final RestTemplate restTemplate;
     private final CardService cardService;
 
+    /** Injected from application.yml — change there if you swap the 3rd-party host. */
     @Value("${external.api.base-url}")
     private String externalApiBaseUrl;
 
@@ -36,10 +42,16 @@ public class ExternalApiService {
     }
 
     /**
-     * Nested flow:
-     * 1. GET card from local DB (@Transactional read)
-     * 2. Call 3rd-party API to enrich with external user profile
-     * 3. Return combined response to client
+     * Nested enrichment flow:
+     * <ol>
+     *   <li>Load the local card from MSSQL (via {@link CardService})</li>
+     *   <li>Call JSONPlaceholder {@code GET /users/{id}}</li>
+     *   <li>Return a combined map for the client</li>
+     * </ol>
+     *
+     * @param cardId         local card primary key
+     * @param externalUserId remote user id on JSONPlaceholder
+     * @return map with keys {@code card}, {@code externalProfile}, {@code source}
      */
     @Transactional(readOnly = true)
     public Map<String, Object> getCardWithExternalProfile(Long cardId, Long externalUserId) {
@@ -51,12 +63,21 @@ public class ExternalApiService {
         Map<String, Object> result = new HashMap<>();
         result.put("card", card);
         result.put("externalProfile", externalUser);
+        // Helps reviewers / handover see the call chain without digging into logs
         result.put("source",
                 "Postman/Client → /api/v1/cards/{id}/enrich → JSONPlaceholder /users/{userId}");
 
         return result;
     }
 
+    /**
+     * Calls the 3rd-party user endpoint and maps the JSON into {@link ExternalUserResponse}.
+     *
+     * @param userId remote user id
+     * @return populated external user DTO
+     * @throws ResourceNotFoundException if the remote user is missing / empty
+     * @throws BusinessException         if the HTTP call itself fails (timeout, network, etc.)
+     */
     public ExternalUserResponse fetchExternalUser(Long userId) {
         String url = externalApiBaseUrl + "/users/" + userId;
         log.info("Calling 3rd-party API: {}", url);

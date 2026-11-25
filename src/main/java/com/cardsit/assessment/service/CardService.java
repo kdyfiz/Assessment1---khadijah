@@ -17,10 +17,25 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Core business service for card lifecycle operations.
+ *
+ * <p>Owns create / update / read logic and maps between entities and DTOs.
+ * Controllers should not talk to the repository directly — go through this service.
+ *
+ * <p><b>Transaction notes:</b>
+ * <ul>
+ *   <li>Writes use {@code @Transactional} so the whole operation commits or rolls back.</li>
+ *   <li>Reads use {@code @Transactional(readOnly = true)} for a consistent snapshot
+ *       and to hint the DB / Hibernate that no flush is needed.</li>
+ * </ul>
+ */
 @Service
 public class CardService {
 
     private static final Logger log = LoggerFactory.getLogger(CardService.class);
+
+    /** Fixed page size required by the assessment (10 records per page). */
     private static final int PAGE_SIZE = 10;
 
     private final CardRepository cardRepository;
@@ -30,13 +45,20 @@ public class CardService {
     }
 
     /**
-     * INSERT - create a new card record.
-     * @Transactional ensures atomic commit/rollback for the write.
+     * Creates a new card and persists it to MSSQL.
+     *
+     * <p>Rejects duplicate card numbers with {@link BusinessException}.
+     * New cards default to status {@code ACTIVE}; currency defaults are applied
+     * on the entity via {@code @PrePersist} if not supplied.
+     *
+     * @param request validated create payload
+     * @return masked card response for the client
      */
     @Transactional
     public CardResponse createCard(CreateCardRequest request) {
         log.info("Creating card for cardholder={}", request.getCardholderName());
 
+        // Uniqueness check before insert to return a clear business error
         if (cardRepository.existsByCardNumber(request.getCardNumber())) {
             throw new BusinessException("Card number already exists");
         }
@@ -56,8 +78,16 @@ public class CardService {
     }
 
     /**
-     * UPDATE - update an existing card.
-     * @Transactional ensures atomic commit/rollback for the write.
+     * Updates an existing card. Only non-null request fields are applied
+     * (partial update / PATCH-style behaviour over PUT).
+     *
+     * <p>Card number and card type are intentionally not updatable here —
+     * change that policy carefully if product requirements evolve.
+     *
+     * @param id      card primary key
+     * @param request optional fields to change
+     * @return updated masked card response
+     * @throws ResourceNotFoundException if the card id does not exist
      */
     @Transactional
     public CardResponse updateCard(Long id, UpdateCardRequest request) {
@@ -66,6 +96,7 @@ public class CardService {
         Card card = cardRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Card not found with id: " + id));
 
+        // Apply only provided fields — null means "leave unchanged"
         if (request.getCardholderName() != null) {
             card.setCardholderName(request.getCardholderName());
         }
@@ -85,8 +116,11 @@ public class CardService {
     }
 
     /**
-     * GET by id - read within a transactional boundary (read-only).
-     * @Transactional(readOnly = true) for consistent read snapshot.
+     * Fetches a single card by primary key.
+     *
+     * @param id card primary key
+     * @return masked card response
+     * @throws ResourceNotFoundException if not found
      */
     @Transactional(readOnly = true)
     public CardResponse getCardById(Long id) {
@@ -99,8 +133,11 @@ public class CardService {
     }
 
     /**
-     * GET with pagination - 10 records per page.
-     * @Transactional(readOnly = true) for consistent paginated read.
+     * Returns a paginated list of cards (always 10 per page), optionally filtered by status.
+     *
+     * @param page   zero-based page index
+     * @param status optional status filter (case-insensitive); blank/null = all cards
+     * @return page metadata + masked card content
      */
     @Transactional(readOnly = true)
     public PageResponse<CardResponse> getCards(int page, String status) {

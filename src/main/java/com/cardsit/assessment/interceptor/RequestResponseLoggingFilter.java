@@ -18,12 +18,25 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
- * Logs REQUEST and RESPONSE for every API call into the dedicated api-request-response.log file.
+ * Servlet filter that audits REQUEST and RESPONSE for every {@code /api/**} call.
+ *
+ * <p><b>Assessment requirement:</b> log request &amp; response to a dedicated file.
+ * Output goes to logger name {@code API_AUDIT}, which is routed to
+ * {@code logs/api-request-response.log} via {@code logback-spring.xml}.
+ *
+ * <p><b>Handover notes:</b>
+ * <ul>
+ *   <li>Uses caching wrappers so the body can be read after the chain completes
+ *       without consuming the original streams.</li>
+ *   <li>Must call {@code copyBodyToResponse()} or the client gets an empty body.</li>
+ *   <li>Bodies longer than 2000 chars are truncated to keep log files manageable.</li>
+ * </ul>
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class RequestResponseLoggingFilter extends OncePerRequestFilter {
 
+    /** Dedicated logger — do not use the class logger if you want file separation. */
     private static final Logger API_AUDIT = LoggerFactory.getLogger("API_AUDIT");
 
     @Override
@@ -31,6 +44,7 @@ public class RequestResponseLoggingFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
+        // Skip non-API traffic (actuator, static, error pages, etc.)
         if (!request.getRequestURI().startsWith("/api/")) {
             filterChain.doFilter(request, response);
             return;
@@ -39,6 +53,7 @@ public class RequestResponseLoggingFilter extends OncePerRequestFilter {
         ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request);
         ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(response);
 
+        // Short id to correlate request + response lines in the audit log
         String correlationId = UUID.randomUUID().toString().substring(0, 8);
         long start = System.currentTimeMillis();
 
@@ -74,6 +89,7 @@ public class RequestResponseLoggingFilter extends OncePerRequestFilter {
                     durationMs
             );
 
+            // Required: write cached response bytes back to the real servlet response
             wrappedResponse.copyBodyToResponse();
         }
     }
@@ -85,6 +101,7 @@ public class RequestResponseLoggingFilter extends OncePerRequestFilter {
         return new String(content, StandardCharsets.UTF_8);
     }
 
+    /** Caps log payload size so large responses do not blow up disk usage. */
     private String truncate(String value) {
         if (value == null) {
             return "(empty)";

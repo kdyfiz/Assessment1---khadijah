@@ -14,6 +14,17 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/**
+ * REST controller for card CRUD and enrichment endpoints.
+ *
+ * <p><b>Base path:</b> {@code /api/v1/cards}
+ *
+ * <p>This layer only handles HTTP concerns (routing, status codes, request validation).
+ * Business logic lives in {@link CardService} / {@link ExternalApiService}.
+ *
+ * <p>All responses are wrapped in {@link ApiResponse} for a consistent client contract.
+ * Validation failures and business errors are handled by {@code GlobalExceptionHandler}.
+ */
 @RestController
 @RequestMapping("/api/v1/cards")
 public class CardController {
@@ -26,7 +37,15 @@ public class CardController {
         this.externalApiService = externalApiService;
     }
 
-    /** INSERT — POST /api/v1/cards */
+    /**
+     * Creates a new card (INSERT).
+     *
+     * <p>{@code @Valid} triggers Bean Validation on {@link CreateCardRequest}
+     * before the service is called.
+     *
+     * @param request card details from the client body
+     * @return HTTP 201 with the created card (card number masked)
+     */
     @PostMapping
     public ResponseEntity<ApiResponse<CardResponse>> createCard(
             @Valid @RequestBody CreateCardRequest request) {
@@ -35,7 +54,14 @@ public class CardController {
                 .body(ApiResponse.ok("Card created successfully", created));
     }
 
-    /** UPDATE — PUT /api/v1/cards/{id} */
+    /**
+     * Partially updates an existing card (UPDATE).
+     * Only non-null fields on the request are applied in the service.
+     *
+     * @param id      path variable — primary key of the card
+     * @param request fields to update (all optional)
+     * @return HTTP 200 with the updated card
+     */
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<CardResponse>> updateCard(
             @PathVariable Long id,
@@ -44,14 +70,25 @@ public class CardController {
         return ResponseEntity.ok(ApiResponse.ok("Card updated successfully", updated));
     }
 
-    /** GET by id — GET /api/v1/cards/{id} */
+    /**
+     * Retrieves a single card by id.
+     *
+     * @param id path variable — primary key of the card
+     * @return HTTP 200 with the card, or 404 if not found
+     */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<CardResponse>> getCardById(@PathVariable Long id) {
         CardResponse card = cardService.getCardById(id);
         return ResponseEntity.ok(ApiResponse.ok("Card retrieved successfully", card));
     }
 
-    /** GET with Pagination (10/page) — GET /api/v1/cards?page=0 */
+    /**
+     * Lists cards with fixed page size of 10.
+     *
+     * @param page   zero-based page index (default {@code 0})
+     * @param status optional filter, e.g. {@code ACTIVE} / {@code BLOCKED}
+     * @return HTTP 200 with paginated card list
+     */
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<CardResponse>>> getCards(
             @RequestParam(defaultValue = "0") int page,
@@ -61,8 +98,14 @@ public class CardController {
     }
 
     /**
-     * Nested 3rd-party API call
-     * Client → GET /api/v1/cards/{id}/enrich?externalUserId=1 → JSONPlaceholder
+     * Nested 3rd-party enrichment endpoint.
+     *
+     * <p>Flow: Client → this API → local MSSQL (card) → JSONPlaceholder user profile
+     * → combined JSON response.
+     *
+     * @param id              local card id
+     * @param externalUserId  JSONPlaceholder user id (default {@code 1})
+     * @return map containing {@code card}, {@code externalProfile}, and {@code source}
      */
     @GetMapping("/{id}/enrich")
     public ResponseEntity<ApiResponse<Map<String, Object>>> enrichCardWithExternalProfile(

@@ -5,6 +5,18 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * JPA entity mapped to MSSQL table {@code cards}.
+ *
+ * <p>This is the persistence model — do not expose it directly on the API.
+ * Controllers / clients receive {@code CardResponse} instead (with masked PAN).
+ *
+ * <p><b>Lifecycle callbacks:</b>
+ * <ul>
+ *   <li>{@link #onCreate()} — sets timestamps and defaults (ACTIVE / MYR) on insert</li>
+ *   <li>{@link #onUpdate()} — refreshes {@code updatedAt} on every update</li>
+ * </ul>
+ */
 @Entity
 @Table(name = "cards")
 public class Card {
@@ -13,21 +25,25 @@ public class Card {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Primary Account Number (PAN). Stored in full; masked only in API responses. */
     @Column(name = "card_number", nullable = false, unique = true, length = 19)
     private String cardNumber;
 
     @Column(name = "cardholder_name", nullable = false, length = 100)
     private String cardholderName;
 
+    /** Allowed values at API layer: DEBIT | CREDIT | PREPAID. */
     @Column(name = "card_type", nullable = false, length = 20)
     private String cardType;
 
+    /** Allowed values at API layer: ACTIVE | INACTIVE | BLOCKED | EXPIRED. */
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 
     @Column(name = "credit_limit", precision = 15, scale = 2)
     private BigDecimal creditLimit;
 
+    /** ISO 4217 currency code (e.g. MYR). Defaults to MYR on create if null. */
     @Column(name = "currency", length = 3)
     private String currency;
 
@@ -58,6 +74,7 @@ public class Card {
         return new Builder();
     }
 
+    /** Runs before INSERT — stamps timestamps and applies safe defaults. */
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -70,6 +87,7 @@ public class Card {
         }
     }
 
+    /** Runs before UPDATE — keeps {@code updatedAt} in sync. */
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
@@ -102,6 +120,10 @@ public class Card {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
+    /**
+     * Manual builder (no Lombok) so the project stays dependency-light.
+     * Prefer {@code Card.builder()...build()} when constructing new entities.
+     */
     public static final class Builder {
         private Long id;
         private String cardNumber;

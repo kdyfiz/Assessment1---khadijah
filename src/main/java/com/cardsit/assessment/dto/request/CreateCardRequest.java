@@ -4,6 +4,12 @@ import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 
+/**
+ * Request body for {@code POST /api/v1/cards}.
+ *
+ * <p>Validated by Jakarta Bean Validation when the controller uses {@code @Valid}.
+ * Failed constraints surface as HTTP 400 via {@code GlobalExceptionHandler}.
+ */
 public class CreateCardRequest {
 
     @NotBlank(message = "Card number is required")
@@ -22,6 +28,7 @@ public class CreateCardRequest {
     @DecimalMin(value = "0.0", inclusive = true, message = "Credit limit cannot be negative")
     private BigDecimal creditLimit;
 
+    /** Optional; entity defaults to MYR if omitted. Must be a 3-letter ISO code when present. */
     @Size(min = 3, max = 3, message = "Currency must be 3-letter ISO code")
     private String currency;
 

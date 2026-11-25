@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logging layout for Cards IT Assessment.
+
+  Two destinations:
+    1) logs/application.log          — general app / Hibernate / Spring logs
+    2) logs/api-request-response.log — dedicated API REQUEST/RESPONSE audit
+       (written by RequestResponseLoggingFilter via logger name "API_AUDIT")
+
+  Daily rolling; files older than 30 days are deleted.
+-->
 <configuration>
     <property name="LOG_PATH" value="logs"/>
     <property name="LOG_FILE" value="${LOG_PATH}/application"/>
@@ -33,6 +43,10 @@
         </encoder>
     </appender>
 
+    <!--
+      additivity=false so audit entries do NOT also go into application.log
+      (they still appear on CONSOLE for local debugging).
+    -->
     <logger name="API_AUDIT" level="INFO" additivity="false">
         <appender-ref ref="API_AUDIT"/>
         <appender-ref ref="CONSOLE"/>

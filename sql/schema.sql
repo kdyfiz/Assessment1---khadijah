@@ -2,6 +2,13 @@
 -- Cards IT Assessment - MSSQL Schema
 -- Database: TESTDB (Local Machine)
 -- ============================================
+-- Handover notes:
+--   - Prefer `docker compose up -d mssql mssql-init` (runs init scripts for you).
+--   - JPA `ddl-auto: update` can also create/alter this table from the Card entity.
+--   - This script is the source of truth for DBA review / manual setup.
+--   - card_type values used by API: DEBIT | CREDIT | PREPAID
+--   - status values used by API: ACTIVE | INACTIVE | BLOCKED | EXPIRED
+-- ============================================
 
 -- Create database if not exists (run as sa / admin)
 IF DB_ID('TESTDB') IS NULL
@@ -13,26 +20,24 @@ GO
 USE TESTDB;
 GO
 
--- Table is also auto-created by JPA (ddl-auto: update).
--- This script is provided for manual setup / DBA review.
-
+-- Maps to com.cardsit.assessment.entity.Card
 IF OBJECT_ID('dbo.cards', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.cards (
         id              BIGINT IDENTITY(1,1) PRIMARY KEY,
-        card_number     NVARCHAR(19)  NOT NULL UNIQUE,
+        card_number     NVARCHAR(19)  NOT NULL UNIQUE,  -- full PAN stored; API masks on response
         cardholder_name NVARCHAR(100) NOT NULL,
         card_type       NVARCHAR(20)  NOT NULL,
         status          NVARCHAR(20)  NOT NULL,
         credit_limit    DECIMAL(15,2) NULL,
-        currency        NVARCHAR(3)   NULL,
+        currency        NVARCHAR(3)   NULL,            -- ISO 4217; app defaults to MYR
         created_at      DATETIME2     NOT NULL,
         updated_at      DATETIME2     NULL
     );
 END
 GO
 
--- Sample seed data (optional)
+-- Sample seed data (12 rows) so pagination (10/page) can be demonstrated immediately
 IF NOT EXISTS (SELECT 1 FROM dbo.cards)
 BEGIN
     INSERT INTO dbo.cards (card_number, cardholder_name, card_type, status, credit_limit, currency, created_at, updated_at)

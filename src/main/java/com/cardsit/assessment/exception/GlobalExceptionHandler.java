@@ -10,6 +10,20 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
 
+/**
+ * Centralised exception → HTTP mapping for all controllers.
+ *
+ * <p>Keeps controllers free of try/catch noise. All error bodies still use
+ * {@link ApiResponse#fail(String)} so clients always see the same envelope shape.
+ *
+ * <p><b>Status mapping:</b>
+ * <ul>
+ *   <li>{@link ResourceNotFoundException} → 404</li>
+ *   <li>{@link BusinessException} → 400</li>
+ *   <li>{@link MethodArgumentNotValidException} → 400 (Bean Validation)</li>
+ *   <li>Any other {@link Exception} → 500</li>
+ * </ul>
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -25,6 +39,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(ex.getMessage()));
     }
 
+    /** Aggregates all field validation messages into one description string. */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex) {
         String errors = ex.getBindingResult().getFieldErrors().stream()
@@ -34,6 +49,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(errors));
     }
 
+    /** Catch-all — unexpected bugs / runtime failures. Prefer more specific handlers above. */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

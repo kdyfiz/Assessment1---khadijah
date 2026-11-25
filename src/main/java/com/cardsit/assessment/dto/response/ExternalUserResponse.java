@@ -2,6 +2,12 @@ package com.cardsit.assessment.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+/**
+ * DTO for JSONPlaceholder {@code /users/{id}} responses.
+ *
+ * <p>{@link JsonIgnoreProperties} ignores unknown fields (address, company, etc.)
+ * so we only bind the fields we care about — safer if the remote schema adds properties.
+ */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ExternalUserResponse {
 

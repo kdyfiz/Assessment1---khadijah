@@ -4,6 +4,15 @@ import org.springframework.data.domain.Page;
 
 import java.util.List;
 
+/**
+ * Paginated list wrapper returned by list endpoints (e.g. {@code GET /api/v1/cards}).
+ *
+ * <p>Built from Spring Data's {@link Page} via {@link #fromPage(Page)} so clients
+ * get stable metadata ({@code page}, {@code size}, {@code totalElements}, etc.)
+ * without depending on Spring types in the JSON contract.
+ *
+ * @param <T> element type inside {@code content} (usually {@link CardResponse})
+ */
 public class PageResponse<T> {
 
     private List<T> content;
@@ -28,6 +37,7 @@ public class PageResponse<T> {
         this.last = last;
     }
 
+    /** Converts a Spring Data {@link Page} into our API pagination shape. */
     public static <T> PageResponse<T> fromPage(Page<T> page) {
         return new PageResponse<>(
                 page.getContent(),

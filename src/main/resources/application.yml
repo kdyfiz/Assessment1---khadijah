@@ -1,3 +1,8 @@
+# =============================================================================
+# Cards IT Assessment — main configuration
+# Change DB credentials / external API URL here for local vs Docker environments.
+# =============================================================================
+
 server:
   port: 8080
 
@@ -5,12 +10,14 @@ spring:
   application:
     name: cards-it-assessment
   datasource:
+    # Local Docker MSSQL (see docker-compose.yml). encrypt + trustServerCertificate for local certs.
     url: jdbc:sqlserver://localhost:1433;databaseName=TESTDB;encrypt=true;trustServerCertificate=true
     username: sa
     password: YourStrong@Passw0rd
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
   jpa:
     hibernate:
+      # update = auto-create/alter tables from entities; use validate/none in production
       ddl-auto: update
     show-sql: true
     properties:
@@ -19,6 +26,7 @@ spring:
         format_sql: true
 
 # 3rd-party API used for nested call demonstration (JSONPlaceholder - free public API)
+# Consumed by ExternalApiService via RestTemplate
 external:
   api:
     base-url: https://jsonplaceholder.typicode.com
@@ -29,4 +37,5 @@ logging:
   level:
     root: INFO
     com.cardsit.assessment: DEBUG
+    # API audit detail is controlled in logback-spring.xml (API_AUDIT logger)
     com.cardsit.assessment.interceptor: INFO

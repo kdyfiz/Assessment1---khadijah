@@ -5,6 +5,12 @@ import com.cardsit.assessment.entity.Card;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Client-facing card DTO returned by the API.
+ *
+ * <p>Built via {@link #fromEntity(Card)} so card numbers are always masked
+ * (last 4 digits only) before leaving the server — never return the raw entity.
+ */
 public class CardResponse {
 
     private Long id;
@@ -34,6 +40,9 @@ public class CardResponse {
         this.updatedAt = updatedAt;
     }
 
+    /**
+     * Maps a persisted {@link Card} to an API-safe response (PAN masked).
+     */
     public static CardResponse fromEntity(Card card) {
         return new CardResponse(
                 card.getId(),
@@ -48,6 +57,10 @@ public class CardResponse {
         );
     }
 
+    /**
+     * Masks PAN to {@code ****-****-****-1234} format for PCI-friendly responses.
+     * Adjust if product needs a different masking scheme.
+     */
     private static String maskCardNumber(String cardNumber) {
         if (cardNumber == null || cardNumber.length() < 4) {
             return "****";
