@@ -1,0 +1,215 @@
+{
+  "info": {
+    "_postman_id": "c4rd51t0-a55e-55me-nt01-c011ect10n01",
+    "name": "Cards IT Assessment",
+    "description": "Cards IT — Java Spring Boot Interview Assignment\n\nBase URL: {{baseUrl}}\n\nResponse envelope:\n- success: true/false\n- description: success message OR failure reason",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "let body = {};",
+          "try { body = pm.response.json(); } catch (e) { body = {}; }",
+          "",
+          "const ok = body.success === true;",
+          "const desc = body.description || '(no description from API)';",
+          "",
+          "if (ok) {",
+          "    pm.test('SUCCESS — ' + desc, function () {",
+          "        pm.expect(body.success).to.eql(true);",
+          "        pm.expect(body.description).to.be.a('string').and.not.empty;",
+          "    });",
+          "} else {",
+          "    pm.test('FAILED — ' + desc, function () {",
+          "        pm.expect(body).to.have.property('description');",
+          "        pm.expect(desc).to.be.a('string').and.not.empty;",
+          "        console.log('Failure reason: ' + desc);",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "cardId",
+      "value": "1"
+    },
+    {
+      "key": "externalUserId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Cards",
+      "item": [
+        {
+          "name": "Create Card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.success && body.data && body.data.id) {",
+                  "    pm.collectionVariables.set('cardId', String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardNumber\": \"4111111111111122\",\n  \"cardholderName\": \"Aina Binti Ali\",\n  \"cardType\": \"CREDIT\",\n  \"creditLimit\": 10000.00,\n  \"currency\": \"MYR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cards",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cards"]
+            },
+            "description": "INSERT — create a new card (`@Transactional`). Expect 201."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Card by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cards/{{cardId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cards", "{{cardId}}"]
+            },
+            "description": "GET by id (`@Transactional` read-only). Expect 200."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Card",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardholderName\": \"Aina Binti Ali Updated\",\n  \"status\": \"ACTIVE\",\n  \"creditLimit\": 15000.00,\n  \"currency\": \"MYR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cards/{{cardId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cards", "{{cardId}}"]
+            },
+            "description": "UPDATE — update existing card (`@Transactional`). Expect 200."
+          },
+          "response": []
+        },
+        {
+          "name": "List Cards (Paginated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cards?page=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cards"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Zero-based page index; page size fixed at 10"
+                }
+              ]
+            },
+            "description": "GET with pagination — 10 records per page. Expect 200."
+          },
+          "response": []
+        },
+        {
+          "name": "Enrich Card (3rd Party)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cards/{{cardId}}/enrich?externalUserId={{externalUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cards", "{{cardId}}", "enrich"],
+              "query": [
+                {
+                  "key": "externalUserId",
+                  "value": "{{externalUserId}}"
+                }
+              ]
+            },
+            "description": "Nested call: Client → Your API → JSONPlaceholder `/users/{id}`. Expect 200."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Negative Cases",
+      "item": [
+        {
+          "name": "Create Card - Invalid Payload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardNumber\": \"123\",\n  \"cardholderName\": \"\",\n  \"cardType\": \"GOLD\",\n  \"creditLimit\": -100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cards",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cards"]
+            },
+            "description": "Validation failure — expect 400 with description explaining why."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
